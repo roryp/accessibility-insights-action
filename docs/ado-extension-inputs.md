@@ -28,6 +28,8 @@ or
 
 -   `staticSitePort` (int). If using `staticSiteDir`, you can set the local website TCP port for the extension to use when serving the static site. If unspecified, a port will be set automatically. If the pipeline serves additional processes, set the port to avoid conflicts. If using `baselineFile`, set the port to make sure future scans will match the baseline file.
 
+-   `keepUrlFragment` (boolean). Default: `false`. To keep the hash fragment in the URLs. If set to false, it will remove the hash fragment from URL for example, http://www.example.com/#foo will be considered as http://www.example.com.
+
 -   `authType` (Choose one: `AAD` - Azure Active Directory). For sites with authenticated pages, use with `serviceAccountName` and `serviceAccountPassword` to specify the authentication type. Learn [how to set up authentication](https://aka.ms/AI-action-auth).
 
 -   `serviceAccountName` (string). For sites with authenticated pages, set the email address for the non-people service account. Use the Key Vault task to securely set the email address. Learn [how to set up authentication with Key Vault](https://aka.ms/AI-action-auth).
@@ -44,9 +46,9 @@ or
 
 -   `scanTimeout` (int). Default: `90000`. The maximum timeout in milliseconds for the scan (excluding dependency setup).
 
--   `failOnAccessibilityError` (boolean). Default: `true`. Fail the task if there are accessibility issues.
+-   `failOnAccessibilityError` (boolean). Default: `true`. Fail the task if _any_ accessibility issues are detected, even if they are also present in the baseline file.
 
--   `baselineFile` (string). The old baseline file path, a new baseline will be generated with the same name. If unspecified, the baseline option will be disabled.
+-   `baselineFile` (string). The old baseline file path, a new baseline will be generated with the same name. If unspecified, the baseline option will be disabled. If a baseline is used, the task will fail if _any_ changes are detected between the baselined results and the current results. This behavior is independent of the value of `failOnAccessibilityError`
 
 -   `singleWorker` (boolean). Default: `true`. To get deterministic scanning results when this value is set to `false`, make sure the value for `maxUrls` is larger than the total number of URLs in the website being scanned.
 
@@ -59,3 +61,7 @@ or
 -   `snapshot` (boolean). Save snapshots of scanned pages as artifacts. These snapshots will show you exactly what the scanner sees when scanning the page. This requires `uploadOutputArtifact` to not be set to `false`.
 
 -   `chromePath` (string). Path to Chrome executable. By default, the task downloads a version of Chrome that is tested to work with this task.
+
+-   `npmRegistryUrl` (string). Default: `https://registry.yarnpkg.com`. NPM registry Url to install the runtime dependencies.
+
+-   `npmRegistryCredential` (connectedService:externalnpmregistry). Credentials to use for external registries to install the runtime dependencies. For registries in this organization/collection, leave this blank; the build’s credentials are used automatically.

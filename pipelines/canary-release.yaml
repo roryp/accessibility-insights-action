@@ -5,7 +5,7 @@ parameters:
     - name: variableGroupName
       displayName: Deployment variable group. Should contain variables named extensionId, extensionName, publisherId, and (optionally) appInsightsConnectionString.
       type: string
-      default: 'ado-extension-canary'
+      default: 'a11y-insights-ado-extension-canary'
     - name: versionOverride
       displayName: Override extension version (for non-patch version upgrades, specify version number)
       type: string
@@ -19,7 +19,10 @@ variables:
 trigger: none
 
 pool:
-    vmImage: ubuntu-latest
+    name: $(a11yInsightsPool)
+    vmImage: $(linuxImage)
+    demands:
+        - ImageOverride -equals $(linuxImage)
 
 resources:
     pipelines:
@@ -35,11 +38,11 @@ stages:
       jobs:
           - template: release-template.yaml
             parameters:
-                ${{ if eq(parameters.variableGroupName, 'ado-extension-canary') }}:
-                    environment: ado-extension-canary
-                    shouldSign: false
+                ${{ if eq(parameters.variableGroupName, 'a11y-insights-ado-extension-canary') }}:
+                    environment: a11y-insghts-ado-extension-canary
+                    shouldSign: true
                     visibility: preview
-                ${{ if ne(parameters.variableGroupName, 'ado-extension-canary') }}:
-                    environment: ado-extension-test
+                ${{ if ne(parameters.variableGroupName, 'a11y-insights-ado-extension-canary') }}:
+                    environment: a11y-insghts-ado-extension-test
                     shouldSign: false
                     visibility: private

@@ -57,6 +57,10 @@ export class ADOTaskConfig extends TaskConfig {
         return isEmpty(value) ? undefined : value;
     }
 
+    public getKeepUrlFragment(): boolean {
+        return this.adoTaskObj.getBoolInput('keepUrlFragment');
+    }
+
     public getHostingMode(): string | undefined {
         const value = this.adoTaskObj.getInput('hostingMode');
 
@@ -186,5 +190,9 @@ export class ADOTaskConfig extends TaskConfig {
     public getUsageDocsUrl(): string {
         const url = 'https://aka.ms/ado-extension-usage';
         return url;
+    }
+
+    public getNPMRegistryUrl(): string | undefined {
+        return this.adoTaskObj.getInput('npmRegistryUrl');
     }
 }

@@ -12,7 +12,10 @@ export class Logger {
     protected initialized = false;
     public errors: string[] = [];
 
-    constructor(protected readonly loggerClients: LoggerClient[], protected readonly currentProcess: typeof process) {}
+    constructor(
+        protected readonly loggerClients: LoggerClient[],
+        protected readonly currentProcess: typeof process,
+    ) {}
 
     public async setup(baseProperties?: { [property: string]: string }): Promise<void> {
         if (this.initialized === true) {
@@ -63,7 +66,7 @@ export class Logger {
         this.invokeLoggerClient((client) => client.trackException(error));
     }
 
-    public trackExceptionAny(underlyingErrorData: any | Error, message: string): void {
+    public trackExceptionAny(underlyingErrorData: any, message: string): void {
         const underlyingError =
             underlyingErrorData instanceof Error ? underlyingErrorData : new Error(this.serializeError(underlyingErrorData));
         this.trackException(new ErrorWithCause(message, { cause: underlyingError }));

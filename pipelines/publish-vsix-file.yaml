@@ -20,10 +20,11 @@ steps:
           downloadType: 'single'
           artifactName: '${{ parameters.environment }}-vsix'
           downloadPath: '$(System.DefaultWorkingDirectory)'
+    - template: generate-vs-marketplace-token.yaml
     - task: PublishAzureDevOpsExtension@3
       inputs:
           connectTo: 'VsTeam'
-          connectedServiceName: 'vs-marketplace'
+          connectedServiceName: 'a11y-insights-vs-marketplace'
           fileType: 'vsix'
           vsixFile: '${{ parameters.environment }}-vsix/${{ parameters.environment }}.vsix'
           publisherId: '$(PublisherID)'

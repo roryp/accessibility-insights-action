@@ -12,123 +12,265 @@ parameters:
     - name: taskUnderTest
       type: string
 
-variables:
-    - group: 'ado-auth-example-secrets'
+jobs:
+    - job: run_registry_url_tests
+      displayName: 'Run registry URL tests'
+      steps:
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail: use different org artifact feed registry URL without credentials'
+            inputs:
+                url: 'https://accessibilityinsights.io/'
+                maxUrls: 1
+                npmRegistryUrl: $(outsideOrgArtifactURL)
+                outputArtifactName: 'no-artifact-will-be-created-here'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-steps:
-    - task: NodeTool@0
-      inputs:
-          versionSpec: '16.x'
-          displayName: Use Node 16.x
-    # reused by all "url" cases
-    - script: npx serve "$(System.DefaultWorkingDirectory)/dev/website-root" -l 5858 &
-      displayName: 'Start /dev/website-root test server at http://localhost:5858'
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should succeed] case succeed: use same org artifact feed registry URL'
+            inputs:
+                url: 'https://accessibilityinsights.io/'
+                maxUrls: 1
+                npmRegistryUrl: $(sameOrgArtifactURL)
+                outputArtifactName: 'accessibility-reports-case-same-org-registry-url'
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 1: staticSiteDir, no baseline'
-      inputs:
-          staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
-          # intentionally omits artifactName; should go to default accessibility-reports
-      condition: succeededOrFailed()
-      continueOnError: true
+    - job: run_tests
+      displayName: 'Run tests'
+      templateContext:
+          outputs:
+              - output: pipelineArtifact
+                targetPath: '$(System.DefaultWorkingDirectory)/_accessibility-reports-case-fail-6'
+                artifactName: 'accessibility-reports-case-fail-6'
+                condition: succeededOrFailed()
+      steps:
+          - task: NodeTool@0
+            inputs:
+                versionSpec: '16.x'
+                displayName: Use Node 16.x
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should succeed] case 2: staticSiteDir, no baseline, failOnAccessibilityError:false'
-      inputs:
-          staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
-          failOnAccessibilityError: false
-          outputArtifactName: accessibility-reports-case-2
-      condition: succeededOrFailed()
+          # reused by all "url" cases
+          - script: npx serve "$(System.DefaultWorkingDirectory)/dev/website-root" -l 5858 &
+            displayName: 'Start /dev/website-root test server at http://localhost:5858'
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 3: url, no baseline'
-      inputs:
-          url: 'http://localhost:5858'
-          outputArtifactName: 'accessibility-reports-case-3'
-      condition: succeededOrFailed()
-      continueOnError: true
+          # Please keep all "should succeed" cases together as a block before and "should fail" cases.
+          # Do not specify a condition so that the pipeline will fail if any of these fail.
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should succeed] case succeed-1: staticSiteDir, no baseline, failOnAccessibilityError:false'
+            inputs:
+                staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
+                failOnAccessibilityError: false
+                outputArtifactName: accessibility-reports-case-succeed-1
+                scanTimeout: 180000
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should succeed] case 4: up-to-date baseline'
-      inputs:
-          url: 'http://localhost:5858'
-          outputArtifactName: 'accessibility-reports-case-4'
-          baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/up-to-date-5858.baseline'
-      condition: succeededOrFailed()
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should succeed] case succeed-2: up-to-date baseline'
+            inputs:
+                url: 'http://localhost:5858'
+                outputArtifactName: 'accessibility-reports-case-succeed-2'
+                baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/up-to-date-5858.baseline'
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 5: baseline missing failures'
-      inputs:
-          url: 'http://localhost:5858'
-          outputArtifactName: 'accessibility-reports-case-5'
-          baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/missing-failures-5858.baseline'
-      condition: succeededOrFailed()
-      continueOnError: true
+          # Please keep all "should fail" cases together as a block after all "should succeed" cases
+          # Each case will need to have continueOnError: true. Each case but the first will also need
+          # a condition: succeededOrFailed() so that the pipeline will run correctly.
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-1: staticSiteDir, no baseline'
+            inputs:
+                staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
+                # intentionally omits artifactName; should go to default accessibility-reports
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 6: baseline with resolved failures'
-      inputs:
-          url: 'http://localhost:5858'
-          outputArtifactName: 'accessibility-reports-case-6'
-          baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/with-resolved-failures-5858.baseline'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-2: url, no baseline'
+            inputs:
+                url: 'http://localhost:5858'
+                outputArtifactName: 'accessibility-reports-case-fail-2'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 7: new baseline file'
-      inputs:
-          staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
-          outputArtifactName: 'accessibility-reports-case-7'
-          baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/doesnt-exist.baseline'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-3: baseline missing failures'
+            inputs:
+                url: 'http://localhost:5858'
+                outputArtifactName: 'accessibility-reports-case-fail-3'
+                baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/missing-failures-5858.baseline'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 8: url, custom artifact upload step'
-      inputs:
-          url: 'http://localhost:5858'
-          uploadOutputArtifact: false
-          outputDir: '_accessibility-reports-case-8'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-4 baseline with resolved failures'
+            inputs:
+                url: 'http://localhost:5858'
+                outputArtifactName: 'accessibility-reports-case-fail-4'
+                baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/with-resolved-failures-5858.baseline'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - publish: '$(System.DefaultWorkingDirectory)/_accessibility-reports-case-8'
-      displayName: 'custom report artifact upload for case 8'
-      artifact: 'accessibility-reports-case-8'
-      condition: succeededOrFailed()
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-5: new baseline file'
+            inputs:
+                staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
+                outputArtifactName: 'accessibility-reports-case-fail-5'
+                baselineFile: '$(System.DefaultWorkingDirectory)/dev/website-baselines/doesnt-exist.baseline'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 9: invalid inputs (no site specified)'
-      inputs:
-          outputArtifactName: 'accessibility-reports-case-9'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-6: url, custom artifact upload step'
+            inputs:
+                url: 'http://localhost:5858'
+                uploadOutputArtifact: false
+                outputDir: '_accessibility-reports-case-fail-6'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 10: invalid inputs (both url and staticSiteDir specified)'
-      inputs:
-          url: 'http://localhost:5858'
-          staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
-          outputArtifactName: 'accessibility-reports-case-10'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-7: url, azure portal auth test'
+            inputs:
+                url: 'https://portal.azure.com'
+                serviceAccountName: $(a11yinsscan-service-acct-username)
+                serviceAccountPassword: $(a11yinsscan-service-acct-password)
+                authType: 'AAD'
+                outputArtifactName: 'accessibility-reports-case-fail-7'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: '[should fail] case 11: v1 inputs specified'
-      inputs:
-          repoServiceConnectionName: 'this isnt used anymore'
-          # siteDir instead of staticSiteDir
-          siteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-8: invalid inputs (no site specified)'
+            inputs:
+                outputArtifactName: 'no-artifact-will-be-created-here'
+            condition: succeededOrFailed()
+            continueOnError: true
 
-    - task: ${{ parameters.taskUnderTest }}
-      displayName: 'case 12: url, azure portal auth test'
-      inputs:
-          url: 'https://portal.azure.com'
-          serviceAccountName: $(a11yinsscan-service-acct-username)
-          serviceAccountPassword: $(a11yinsscan-service-acct-password)
-          authType: 'AAD'
-          outputArtifactName: 'accessibility-reports-case-12'
-      condition: succeededOrFailed()
-      continueOnError: true
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-9: invalid inputs (both url and staticSiteDir specified)'
+            inputs:
+                url: 'http://localhost:5858'
+                staticSiteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
+            condition: succeededOrFailed()
+            continueOnError: true
+
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should fail] case fail-10: v1 inputs specified'
+            inputs:
+                repoServiceConnectionName: 'this isnt used anymore'
+                # siteDir instead of staticSiteDir
+                siteDir: '$(System.DefaultWorkingDirectory)/dev/website-root'
+            condition: succeededOrFailed()
+            continueOnError: true
+
+          # Below cases are for keepUrlFragment parameter validation
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should crawl] case keepUrlFragment-1: crawl to hash routed page'
+            inputs:
+                url: 'https://ms.portal.azure.com/'
+                serviceAccountName: $(a11yinsscan-service-acct-username)
+                serviceAccountPassword: $(a11yinsscan-service-acct-password)
+                authType: 'AAD'
+                maxUrls: 10
+                keepUrlFragment: 'true'
+                outputArtifactName: 'accessibility-reports-case-keepUrlFragment-1'
+                scanTimeout: 300000
+            condition: succeededOrFailed()
+            continueOnError: true
+
+          - task: ${{ parameters.taskUnderTest }}
+            displayName: '[should not crawl] case keepUrlFragment-2: do not crawl to hash routed page'
+            inputs:
+                url: 'https://ms.portal.azure.com/'
+                serviceAccountName: $(a11yinsscan-service-acct-username)
+                serviceAccountPassword: $(a11yinsscan-service-acct-password)
+                authType: 'AAD'
+                maxUrls: 10
+                keepUrlFragment: 'false'
+                outputArtifactName: 'accessibility-reports-case-keepUrlFragment-2'
+                scanTimeout: 300000
+            condition: succeededOrFailed()
+            continueOnError: true
+
+    - job: validate_artifacts
+      dependsOn:
+          - run_tests
+          - run_registry_url_tests
+      displayName: 'Validate artifacts'
+      #pool:
+      #    name: a11y-ado-auth
+      steps:
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download artifacts from running tests'
+            inputs:
+                allowPartiallySucceededBuilds: true
+                targetPath: '$(Pipeline.Workspace)/artifacts'
+                itemPattern: accessibility-reports*/*
+
+          - task: CmdLine@2
+            displayName: 'Validate index.html files from artifacts'
+            # Note: Update the list of expected files as needed for changing test cases
+            inputs:
+                script: |
+                    echo artifacts/accessibility-reports-case-fail-2/index.html > expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-fail-3/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-fail-4/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-fail-5/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-fail-6/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-fail-7/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-keepUrlFragment-1/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-keepUrlFragment-2/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-same-org-registry-url/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-succeed-1/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports-case-succeed-2/index.html >> expected-index-html-files.txt
+                    echo artifacts/accessibility-reports/index.html >> expected-index-html-files.txt
+                    echo Expected index.html files \(expected-index-html-files.txt\):
+                    cat expected-index-html-files.txt
+                    echo 
+                    echo Actual index.html files from artifacts \(actual-index-html-files.txt\):
+                    find artifacts -name index.html | sort | tee actual-index-html-files.txt
+                    echo 
+                    echo Comparing actual-index-html-files.txt to expected-index-html-files.txt
+                    # Note: diff will return 0 if the files are identical, 1 if they differ, and 2 if an error occurs
+                    diff actual-index-html-files.txt expected-index-html-files.txt
+                workingDirectory: '$(Pipeline.Workspace)'
+
+          - task: CmdLine@2
+            displayName: 'Validate .baseline files from artifacts'
+            # Note: Update the list of expected files as needed for changing test cases
+            inputs:
+                script: |
+                    echo artifacts/accessibility-reports-case-fail-3/missing-failures-5858.baseline > expected-baseline-files.txt
+                    echo artifacts/accessibility-reports-case-fail-4/with-resolved-failures-5858.baseline >> expected-baseline-files.txt
+                    echo artifacts/accessibility-reports-case-fail-5/doesnt-exist.baseline >> expected-baseline-files.txt
+                    echo Expected .baseline files \(expected-baseline-files.txt\):
+                    cat expected-baseline-files.txt
+                    echo 
+                    echo Actual .baseline files from artifacts \(actual-baseline-files.txt\):
+                    find artifacts -name *.baseline | sort | tee actual-baseline-files.txt
+                    echo 
+                    echo Comparing actual-baseline-files.txt to expected-baseline-files.txt
+                    # Note: diff will return 0 if the files are identical, 1 if they differ, and 2 if an error occurs
+                    diff actual-baseline-files.txt expected-baseline-files.txt
+                workingDirectory: '$(Pipeline.Workspace)'
+
+          - task: CmdLine@2
+            displayName: 'Validate keepUrlFragment from index.html file'
+            # Below validation is based on hash URLs pattern scanned by crawler in index.html file
+            # with keepUrlFragment as false, azure portal URL with #view should not be present
+            # with keepUrlFragment as true, azure portal URL with #view should be present
+            inputs:
+                script: |
+                    cd artifacts/accessibility-reports-case-keepUrlFragment-1
+                    grep -r --include='*.html' 'https://ms.portal.azure.com/#view' > accessibility-reports-case-keepUrlFragment-1.txt
+                    if [ -s "accessibility-reports-case-keepUrlFragment-1.txt" ]; then
+                        echo test-passed > expected-result.txt
+                        echo keepUrlFragment-1-test-passed
+                    fi
+
+                    cd ../accessibility-reports-case-keepUrlFragment-2
+                    grep -r --include='*.html' 'https://ms.portal.azure.com/#view' > accessibility-reports-case-keepUrlFragment-2.txt
+                    if [ ! -s "accessibility-reports-case-keepUrlFragment-2.txt" ]; then
+                        echo test-passed > expected-result.txt
+                        echo keepUrlFragment-2-test-passed
+                    fi
+
+                    cd ..
+                    # Note: diff will succeed if both files are present and identical, and fail if any of the file is missing or they differ
+                    diff accessibility-reports-case-keepUrlFragment-1/expected-result.txt accessibility-reports-case-keepUrlFragment-2/expected-result.txt
+                workingDirectory: '$(Pipeline.Workspace)'
